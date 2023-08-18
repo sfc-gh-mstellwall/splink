@@ -292,14 +292,16 @@
         "duckdb",
         "presto",
         "sqlite",
-        "postgres"
+        "postgres",
+        "snowflake"
       ],
       "enum": [
         "spark",
         "duckdb",
         "presto",
         "sqlite",
-        "postgres"
+        "postgres",
+        "snowflake"
       ]
     },
     "linker_uid": {

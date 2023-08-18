@@ -36,10 +36,10 @@ def add_prefix(tree, prefix):
     tree.find(exp.Identifier).args["this"] = identifier_string
     return tree
 
-
-def add_table(tree, tablename):
+# MS SNF: Added optional parameter to handle that Snowflake does not support quoted table alias
+def add_table(tree, tablename, quoted: bool = True):
     tree = tree.copy()
-    table_identifier = exp.Identifier(this=tablename, quoted=True)
+    table_identifier = exp.Identifier(this=tablename, quoted=quoted)
     identifier = tree.find(exp.Column)
     identifier.args["table"] = table_identifier
     return tree
@@ -155,13 +155,22 @@ class InputColumn:
         return [self.name_l(), self.name_r()]
 
     def l_name_as_l(self):
-        name_with_l_table = add_table(self.input_name_as_tree, "l").sql(
+        # MS SNF: Snowflake does not support a quoted table alias
+        quoted = True
+        if self._sql_dialect == 'snowflake':
+            quoted = False
+
+        name_with_l_table = add_table(self.input_name_as_tree, "l", quoted).sql(
             dialect=self._sql_dialect
         )
         return f"{name_with_l_table} as {self.name_l()}"
 
     def r_name_as_r(self):
-        name_with_r_table = add_table(self.input_name_as_tree, "r").sql(
+        # MS SNF: Snowflake does not support a quoted table alias
+        quoted = True
+        if self._sql_dialect == 'snowflake':
+            quoted = False
+        name_with_r_table = add_table(self.input_name_as_tree, "r", quoted).sql(
             dialect=self._sql_dialect
         )
         return f"{name_with_r_table} as {self.name_r()}"
