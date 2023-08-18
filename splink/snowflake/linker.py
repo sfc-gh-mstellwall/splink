@@ -159,6 +159,7 @@ class SnowflakeLinker(Linker):
         # Add missing functions
         if not self._functions_exists() or force_install:
             self._register_udfs_from_jar()
+            self._def_create_damerau_levenshtein_function()
             self._create_log2_function()
 
     def _get_active_session_if_not_provided(self, session):
@@ -208,7 +209,7 @@ class SnowflakeLinker(Linker):
         self._run_sql_execution(drop_sql)
 
     def _functions_exists(self):
-        udf_funcs = ['JACCARDSIMILARITY', 'JAROWINKLERSIMILARITY', 'LOG2']
+        udf_funcs = ['JACCARDSIMILARITY', 'JAROWINKLERSIMILARITY', 'LOG2', 'DAMERAULEVENSHTEIN']
 
         n_udfs = self.session.table(f"{self.database}.INFORMATION_SCHEMA.FUNCTIONS").filter(
             (col("FUNCTION_SCHEMA") == lit(self.schema.strip('"'))) & (col("FUNCTION_NAME").in_(udf_funcs))).count()
@@ -255,6 +256,77 @@ class SnowflakeLinker(Linker):
         """
 
         _ = self._run_sql_execution(sql).collect()
+
+    def _def_create_damerau_levenshtein_function(self):
+        sql = """
+            CREATE OR REPLACE FUNCTION dameraulevenshtein(l VARCHAR, r VARCHAR)
+            RETURNS DOUBLE
+            LANGUAGE SCALA
+            RUNTIME_VERSION = 2.12
+            HANDLER='LevDamerauDistance.call'
+            AS
+            $$
+            import scala.collection.mutable
+            
+            class LevDamerauDistance {
+              def call(left: String, right: String): Double = {
+            
+            
+                if ((left != null) & (right != null)) {
+            
+              val len1 = left.length
+              val len2 = right.length
+              val infinite = len1 + len2
+            
+              // character array
+              val da = mutable.Map[Char, Int]().withDefaultValue(0)
+            
+              // distance matrix
+              val score = Array.fill(len1 + 2, len2 + 2)(0)
+            
+              score(0)(0) = infinite
+              for (i <- 0 to len1) {
+                score(i + 1)(0) = infinite
+                score(i + 1)(1) = i
+              }
+              for (i <- 0 to len2) {
+                score(0)(i + 1) = infinite
+                score(1)(i + 1) = i
+              }
+            
+              for (i <- 1 to len1) {
+                var db = 0
+                for (j <- 1 to len2) {
+                  val i1 = da(right(j - 1))
+                  val j1 = db
+                  var cost = 1
+                  if (left(i - 1) == right(j - 1)) {
+                    cost = 0
+                    db = j
+                  }
+            
+                  score(i + 1)(j + 1) = List(
+                    score(i)(j) + cost,
+                    score(i + 1)(j) + 1,
+                    score(i)(j + 1) + 1,
+                    score(i1)(j1) + (i - i1 - 1) + 1 + (j - j1 - 1)
+                  ).min
+                }
+                da(left(i - 1)) = i
+              }
+            
+              score(len1 + 1)(len2 + 1)
+            
+            
+                } else {
+                  100.0
+                }
+              }
+            }
+            
+            $$;        
+        """
+        self._run_sql_execution(sql).collect()
 
     def _create_log2_function(self):
         sql = """

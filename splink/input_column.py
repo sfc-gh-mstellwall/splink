@@ -200,15 +200,23 @@ class InputColumn:
         return [self.tf_name_l(), self.tf_name_r()]
 
     def l_tf_name_as_l(self):
+        # MS SNF: Snowflake does not support a quoted table alias
+        quoted = True
+        if self._sql_dialect == 'snowflake':
+            quoted = False
         tree = add_prefix(self.input_name_as_tree, prefix=self.tf_prefix)
-        tf_name_with_l_table = add_table(tree, tablename="l").sql(
+        tf_name_with_l_table = add_table(tree, tablename="l", quoted=quoted).sql(
             dialect=self._sql_dialect
         )
         return f"{tf_name_with_l_table} as {self.tf_name_l()}"
 
     def r_tf_name_as_r(self):
+        # MS SNF: Snowflake does not support a quoted table alias
+        quoted = True
+        if self._sql_dialect == 'snowflake':
+            quoted = False
         tree = add_prefix(self.input_name_as_tree, prefix=self.tf_prefix)
-        tf_name_with_r_table = add_table(tree, tablename="r").sql(
+        tf_name_with_r_table = add_table(tree, tablename="r", quoted=quoted).sql(
             dialect=self._sql_dialect
         )
         return f"{tf_name_with_r_table} as {self.tf_name_r()}"

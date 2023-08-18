@@ -80,8 +80,7 @@ class SnowflakeBase(DialectBase):
 
     @property
     def _damerau_levenshtein_name(self):
-        # MS: Currently no UDF for this : return "damerau_levenshtein"
-        return "EDITDISTANCE"
+        return "DAMERAULEVENSHTEIN"
 
     @property
     def _jaro_winkler_name(self):
