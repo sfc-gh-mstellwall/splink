@@ -1,3 +1,52 @@
+# This is a FORK of the offical Splink libry where Snowflake (Snowpark-9 is added as a backend, in order to use it you need to clone this repository
+
+Example of using the SNowflake backend after colnde this repository
+
+```py
+from snowflake.snowpark import Session
+from splink.snowflake.linker import SnowflakeLinker
+import splink.snowflake.comparison_library as cl
+import splink.snowflake.comparison_template_library as ctl
+import splink.snowflake.blocking_rule_library as brl
+from splink.snowflake.blocking_rule_library import block_on
+from splink.datasets import splink_datasets
+
+df_splink = splink_datasets.fake_1000
+
+session = Session.builder.configs(connection_parameters).create()
+
+# Upload the example dataset to Snowflake
+df_snf = session.write_pandas(df_splink, 'fake_1000_new', quote_identifiers=False, auto_create_table=True, overwrite=True)
+
+settings = {
+    "link_type": "dedupe_only",
+    "unique_id_column_name": "UNIQUE_ID",
+    "blocking_rules_to_generate_predictions": [
+        block_on("FIRST_NAME"),
+        block_on("SURNAME"),
+    ],
+    "comparisons": [
+        ctl.name_comparison("FIRST_NAME"),
+        ctl.name_comparison("SURNAME"),
+        ctl.date_comparison("DOB", cast_strings_to_date=True),
+        cl.exact_match("CITY", term_frequency_adjustments=True),
+        ctl.email_comparison("EMAIL", include_username_fuzzy_level=False),
+    ],
+}
+linker = SnowflakeLinker(df_snf, settings)
+linker.estimate_u_using_random_sampling(max_pairs=1e6)
+
+blocking_rule_for_training = block_on(["FIRST_NAME", "SURNAME"])
+linker.estimate_parameters_using_expectation_maximisation(blocking_rule_for_training) 
+blocking_rule_for_training = block_on(“DOB")
+linker.estimate_parameters_using_expectation_maximisation(blocking_rule_for_training)
+
+pairwise_predictions = linker.predict()
+clusters = linker.cluster_pairwise_predictions_at_threshold(pairwise_predictions, 0.95)
+clusters.as_pandas_dataframe(limit=5)
+```
+
+
 <p align="center">
 <img src="https://user-images.githubusercontent.com/7570107/85285114-3969ac00-b488-11ea-88ff-5fca1b34af1f.png" alt="Splink Logo" height="150px">
 </p>
