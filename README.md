@@ -1,6 +1,6 @@
-# This is a FORK of the offical Splink libry where Snowflake (Snowpark-9 is added as a backend, in order to use it you need to clone this repository
+# This is a FORK of the offical Splink library where Snowflake (Snowpark) is added as a backend, in order to use it you need to clone this repository
 
-Example of using the SNowflake backend after colnde this repository
+Example of using the SNowflake backend after cloning this repository and installed the snowflake-snowpark-python library.
 
 ```py
 from snowflake.snowpark import Session
